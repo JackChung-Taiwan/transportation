@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Grab Game - Audio & Visual</title>
+    <title>Magic Grab Game - PC Visual Adjustments</title>
     <style>
         /* --- 樣式設定 --- */
         body {
@@ -67,7 +67,8 @@
             #game-title { font-size: 1.8rem; margin-top: 10px; }
             .info-box { font-size: 1.2rem; padding: 5px 15px; min-width: 100px; }
             #target-word { font-size: 4rem !important; }
-            #footer-subtitle { font-size: 1.5rem !important; }
+            /* 手機版 Logo 維持較小尺寸 */
+            #footer-logo { max-height: 60px !important; }
         }
 
         .time-stopped {
@@ -94,17 +95,16 @@
         #footer-bar {
             position: absolute; bottom: 20px; left: 0; width: 100%;
             text-align: center; z-index: 20;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.8));
         }
 
-        #footer-subtitle {
-            font-family: 'Microsoft JhengHei', 'Heiti TC', sans-serif;
-            font-weight: 900;
-            font-size: 2rem;
-            letter-spacing: 2px;
-            color: #FFFFFF;
-            -webkit-text-stroke: 1.5px #000000; 
-            paint-order: stroke fill;
-            text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        #footer-logo {
+            height: auto;
+            width: auto;
+            /* --- 修改重點：電腦版 Logo 放大 --- */
+            max-height: 120px; /* 從 80px 改為 120px */
+            max-width: 80%; 
+            display: inline-block;
         }
 
         /* 啟動畫面 */
@@ -179,7 +179,7 @@
         <h2 style="color:white; margin-bottom:10px;">Magic Grab Game</h2>
         <div id="device-hint">偵測裝置中...</div>
         <button id="start-btn" disabled>Loading...</button>
-        <p style="color:#aaa; font-size: 0.9rem; margin-top: 20px;">台灣兒童美語協會製作</p>
+        <img src="image_0.png" alt="台灣兒童美語協會 Logo" style="max-height: 60px; margin-top: 20px;">
     </div>
 
     <div id="victory-layer">
@@ -209,7 +209,7 @@
             <div id="feedback-text">Good!</div>
             
             <div id="footer-bar">
-                <div id="footer-subtitle">台灣兒童美語協會製作</div>
+                <img id="footer-logo" src="image_0.png" alt="台灣兒童美語協會 Logo">
             </div>
         </div>
     </div>
@@ -237,7 +237,10 @@
         { word: "Airplane", emoji: "✈️", color: "#03A9F4" }, 
         { word: "Rocket", emoji: "🚀", color: "#673AB7" }, 
         { word: "Ship", emoji: "🚢", color: "#00BCD4" }, 
-        { word: "Helicopter", emoji: "🚁", color: "#8BC34A" } 
+        { word: "Helicopter", emoji: "🚁", color: "#8BC34A" },
+        { word: "Fire Truck", emoji: "🚒", color: "#FF4081" }, 
+        { word: "Electric Scooter", emoji: "🛴", color: "#795548" }, 
+        { word: "Boat", emoji: "⛵", color: "#009688" } 
     ];
 
     const praises = ["Excellent!", "Awesome!", "Fantastic!", "Brilliant!", "Great Job!", "Perfect!", "Super!", "Wonderful!"];
@@ -289,7 +292,9 @@
 
     function spawnObject(forcedTarget = null) {
         const type = forcedTarget || vocabulary[Math.floor(Math.random() * vocabulary.length)];
-        let baseSize = isMobile ? 0.15 : 0.13; 
+        
+        // 電腦版大尺寸 (0.20), 手機版維持 (0.15)
+        let baseSize = isMobile ? 0.15 : 0.20; 
 
         gameState.objects.push({
             word: type.word,
@@ -310,7 +315,6 @@
 
         gameState.target = vocabulary[Math.floor(Math.random() * vocabulary.length)];
         
-        // 顯示喇叭
         const targetEl = document.getElementById('target-word');
         targetEl.innerText = "🔊"; 
         targetEl.style.color = "#FFEB3B"; 
@@ -392,7 +396,7 @@
         if (gameState.hand.pinching) {
             if (!gameState.grabbed) {
                 let closest = null;
-                let grabRadius = isMobile ? 0.09 : 0.06; 
+                let grabRadius = 0.09; 
                 let minDist = grabRadius; 
                 const aspect = canvasElement.width / canvasElement.height;
 
@@ -496,13 +500,17 @@
             canvasCtx.strokeStyle = "white";
             canvasCtx.stroke();
 
-            canvasCtx.font = `${r * 1.2}px Arial`;
+            // --- 修改重點：調整圓圈內文字大小 ---
+            // 手機版維持較大比例 (1.2倍半徑)
+            // 電腦版縮小比例 (改為 0.8倍半徑)，讓圖案圓圈感覺更空曠
+            let fontSizeMultiplier = isMobile ? 1.2 : 0.8;
+            canvasCtx.font = `${r * fontSizeMultiplier}px Arial`;
+            
             canvasCtx.textAlign = "center";
             canvasCtx.textBaseline = "middle";
             canvasCtx.fillStyle = "white";
             canvasCtx.fillText(obj.emoji, x, y);
 
-            /* --- 修改重點：只有在被抓取時，才顯示文字 --- */
             if (obj === gameState.grabbed) {
                 canvasCtx.fillStyle = "#FFF";
                 canvasCtx.font = `bold ${r * 1.5}px Arial`; 
