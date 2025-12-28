@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Grab Game - Advanced Logic</title>
+    <title>Magic Grab Game - No Easy Spawn</title>
     <style>
         /* --- 樣式設定 --- */
         body {
@@ -299,22 +299,34 @@
     }
 
     function spawnObject(forcedTarget = null) {
-        // --- 修改重點：智慧生成邏輯 ---
-        
         let type;
         if (forcedTarget) {
             type = forcedTarget;
         } else {
+            // --- 修改重點：防止生成當前目標單字作為補充 ---
+            
             // 1. 計算目前場上每個單字的數量
             let counts = {};
             gameState.objects.forEach(o => { counts[o.word] = (counts[o.word] || 0) + 1; });
 
-            // 2. 篩選出數量小於 2 的單字 (避免重複超過一次)
-            let candidates = vocabulary.filter(v => (counts[v.word] || 0) < 2);
-            
-            // 3. 如果沒有候選字(理論上不可能，因為 15個單字 * 2 > 10格)，就從全部隨機選
-            if (candidates.length === 0) candidates = vocabulary;
-            
+            // 2. 篩選候選字：
+            //    (A) 場上數量少於 2
+            //    (B) 且「不是」目前的目標單字 (避免一補進來就是答案)
+            let candidates = vocabulary.filter(v => {
+                let countOk = (counts[v.word] || 0) < 2;
+                let isNotTarget = true;
+                if (gameState.target) {
+                    isNotTarget = (v.word !== gameState.target.word);
+                }
+                return countOk && isNotTarget;
+            });
+
+            // 3. 如果篩選後沒有候選字 (極端情況)，則放寬條件只看數量
+            if (candidates.length === 0) {
+                candidates = vocabulary.filter(v => (counts[v.word] || 0) < 2);
+            }
+            if (candidates.length === 0) candidates = vocabulary; // 最終防呆
+
             type = candidates[Math.floor(Math.random() * candidates.length)];
         }
 
@@ -405,8 +417,7 @@
                 timeValEl.innerText = elapsed.toFixed(2);
             }
             
-            // --- 修改重點：自動補充圖片 ---
-            // 確保畫面上至少有 10 個物件
+            // 自動補充機制
             if (gameState.objects.length < 10) {
                 spawnObject();
             }
@@ -423,6 +434,7 @@
                 obj.x += obj.vx; obj.y += obj.vy;
                 
                 if(obj.x < 0.05 || obj.x > 0.95) obj.vx *= -1;
+                // 強制邊界檢查
                 if(obj.y < 0.25) { obj.y = 0.25; obj.vy = Math.abs(obj.vy); }
                 if(obj.y > 0.72) { obj.y = 0.72; obj.vy = -Math.abs(obj.vy); }
             }
