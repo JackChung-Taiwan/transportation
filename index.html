@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Grab Game - Safe Zone</title>
+    <title>Magic Grab Game - Mobile Welcome</title>
     <style>
         /* --- 樣式設定 --- */
         body {
@@ -63,15 +63,6 @@
             min-width: 140px; 
         }
 
-        @media (max-width: 768px) {
-            #game-title { font-size: 1.8rem; margin-top: 10px; }
-            .info-box { font-size: 1.2rem; padding: 5px 15px; min-width: 100px; }
-            #target-word { font-size: 4rem !important; }
-            #footer-logo { max-height: 60px !important; }
-            /* 手機版回饋文字小一點 */
-            #feedback-text { font-size: 3rem !important; }
-        }
-
         .time-stopped {
             background: #FFEB3B !important;
             color: #D50000 !important;
@@ -80,7 +71,6 @@
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* 題目區顯示喇叭 */
         #target-word {
             font-size: 5rem; font-weight: 900; color: #FFEB3B;
             text-shadow: 3px 3px 0px #000; margin-top: 15px; 
@@ -100,19 +90,35 @@
         }
 
         #footer-logo {
-            height: auto;
-            width: auto;
-            max-height: 120px; 
-            max-width: 80%; 
+            height: auto; width: auto;
+            max-height: 120px; max-width: 80%; 
             display: inline-block;
         }
 
-        /* 啟動畫面 */
+        /* --- 啟動畫面 (主要修改區) --- */
         #start-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #111; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 100;
+            background: #111; 
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            z-index: 100;
             padding: 20px; text-align: center;
+        }
+
+        /* 啟動畫面標題 */
+        #start-title {
+            color: white; 
+            margin-bottom: 20px;
+            font-size: 2.5rem; /* PC 預設 */
+        }
+
+        /* 啟動畫面 Logo */
+        #start-logo {
+            margin-top: 30px;
+            max-height: 80px; /* PC 預設 */
+            width: auto;
         }
 
         #device-hint {
@@ -159,6 +165,36 @@
             text-shadow: 2px 2px 0 #000; font-weight: bold;
         }
 
+        /* --- 📱 手機版專用調整 --- */
+        @media (max-width: 768px) {
+            /* 遊戲中 */
+            #game-title { font-size: 1.8rem; margin-top: 10px; }
+            .info-box { font-size: 1.2rem; padding: 5px 15px; min-width: 100px; }
+            #target-word { font-size: 4rem !important; }
+            #footer-logo { max-height: 60px !important; }
+            #feedback-text { font-size: 3rem !important; }
+
+            /* 啟動畫面 (首頁) 放大 */
+            #start-title { 
+                font-size: 3.5rem !important; /* 標題變大 */
+                margin-bottom: 30px;
+            }
+            #device-hint {
+                font-size: 1.8rem; /* 提示字變大 */
+                padding: 15px 30px;
+                margin-bottom: 40px;
+            }
+            #start-btn {
+                font-size: 2.5rem; /* 按鈕變大 */
+                padding: 20px 60px;
+                width: 80%; /* 寬度加寬 */
+            }
+            #start-logo {
+                max-height: 180px !important; /* Logo 大幅變大 */
+                margin-top: 40px;
+            }
+        }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes bounceIn { 
             0% { transform: scale(0); opacity: 0; } 
@@ -176,10 +212,11 @@
 <body>
 
     <div id="start-overlay">
-        <h2 style="color:white; margin-bottom:10px;">Magic Grab Game</h2>
+        <h2 id="start-title">Magic Grab Game</h2>
         <div id="device-hint">偵測裝置中...</div>
         <button id="start-btn" disabled>Loading...</button>
-        <img src="image_0.png" alt="台灣兒童美語協會 Logo" style="max-height: 60px; margin-top: 20px;">
+        
+        <img id="start-logo" src="image_0.png" alt="台灣兒童美語協會 Logo">
     </div>
 
     <div id="victory-layer">
@@ -239,7 +276,7 @@
         { word: "Ship", emoji: "🚢", color: "#00BCD4" }, 
         { word: "Helicopter", emoji: "🚁", color: "#8BC34A" },
         { word: "Fire Truck", emoji: "🚒", color: "#FF4081" }, 
-        { word: "Electric Scooter", emoji: "🛴", color: "#795548" }, 
+        { word: "Scooter", emoji: "🛴", color: "#795548" }, 
         { word: "Boat", emoji: "⛵", color: "#009688" } 
     ];
 
@@ -294,9 +331,7 @@
         const type = forcedTarget || vocabulary[Math.floor(Math.random() * vocabulary.length)];
         let baseSize = isMobile ? 0.18 : 0.20; 
 
-        // --- 強制生成在安全區內 ---
-        // 絕對安全區：0.25 (頂部) ~ 0.70 (底部)
-        // 這樣確保生成時就在可拖曳範圍內
+        // 安全區
         let randomY = Math.random() * 0.45 + 0.25;
 
         gameState.objects.push({
@@ -392,20 +427,10 @@
             if (obj !== gameState.grabbed) {
                 obj.x += obj.vx; obj.y += obj.vy;
                 
-                // X 軸碰撞
                 if(obj.x < 0.05 || obj.x > 0.95) obj.vx *= -1;
 
-                // --- 修改重點：嚴格限制 Y 軸移動範圍 ---
-                // 上限 0.25 (避開 UI), 下限 0.72 (避開桌子)
-                // 如果超出範圍，強制拉回並反彈
-                if(obj.y < 0.25) {
-                    obj.y = 0.25;
-                    obj.vy = Math.abs(obj.vy); // 強制向下彈
-                }
-                if(obj.y > 0.72) {
-                    obj.y = 0.72;
-                    obj.vy = -Math.abs(obj.vy); // 強制向上彈
-                }
+                if(obj.y < 0.25) { obj.y = 0.25; obj.vy = Math.abs(obj.vy); }
+                if(obj.y > 0.72) { obj.y = 0.72; obj.vy = -Math.abs(obj.vy); }
             }
         });
 
@@ -516,7 +541,6 @@
             canvasCtx.strokeStyle = "white";
             canvasCtx.stroke();
 
-            // 電腦版文字縮小 (0.8), 手機版維持 (1.2)
             let fontSizeMultiplier = isMobile ? 1.2 : 0.8;
             canvasCtx.font = `${r * fontSizeMultiplier}px Arial`;
             
