@@ -1,646 +1,718 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>聖誕光劍 (Ace x 翊華聯名最終版)</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Magic Grab Game - 台灣兒童美語協會</title>
+    <style>
+        body {
+            margin: 0; padding: 0;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            color: white;
+            /* 禁止手機上的默認觸控行為 (如捲動、縮放) */
+            touch-action: none; 
+            user-select: none;
+            -webkit-user-select: none;
+        }
 
-<style>
-  body {
-    margin: 0; padding: 0; overflow: hidden;
-    background-color: #0b1e10;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    user-select: none;
-    cursor: none; /* 隱藏滑鼠 */
-    touch-action: none; /* 禁止手機捲動 */
-  }
+        #container {
+            position: relative;
+            width: 100vw; height: 100vh;
+            display: flex;
+            justify-content: center; align-items: center;
+        }
 
-  /* UI 層 */
-  #ui-layer {
-    position: absolute; top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    pointer-events: none;
-    z-index: 20;
-  }
+        #input_video { display: none; }
 
-  /* 通用居中容器 */
-  .center-overlay {
-    position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    pointer-events: auto; /* 允許點擊 */
-  }
+        canvas {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+        }
 
-  /* 開始面板 */
-  #start-panel {
-    background: linear-gradient(135deg, #c0392b, #8e44ad);
-    padding: 5vmin; 
-    border-radius: 20px;
-    text-align: center; color: white;
-    border: 4px solid #f1c40f; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    width: 85%; max-width: 400px;
-    transition: opacity 0.3s;
-  }
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 10;
+        }
 
-  /* 勝利面板 */
-  #victory-panel {
-    display: none; /* 預設隱藏 */
-    background: rgba(0, 0, 0, 0.9);
-    padding: 5vmin;
-    border-radius: 20px;
-    text-align: center; color: #ffd700;
-    border: 4px solid #ffd700;
-    box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
-    width: 90%; max-width: 600px;
-  }
+        /* --- 頂部區域 --- */
+        #top-bar {
+            position: absolute; top: 20px; left: 0; width: 100%;
+            text-align: center;
+            pointer-events: none;
+        }
 
-  h1 { margin: 0 0 10px 0; font-size: 8vmin; text-shadow: 2px 2px 0px #000; }
-  p { font-size: 4vmin; margin-bottom: 20px; line-height: 1.5; color: white; }
-  
-  .victory-text {
-    font-size: 6vmin; font-weight: bold; margin-bottom: 30px;
-    text-shadow: 0 0 10px #ff0000; line-height: 1.4;
-  }
+        #game-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #FFD740; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
 
-  /* 按鈕樣式 */
-  button {
-    padding: 12px 30px;
-    font-size: 5vmin; 
-    background: #27ae60; 
-    color: white; 
-    border: 3px solid #f1c40f; 
-    border-radius: 50px;
-    cursor: pointer; 
-    font-weight: bold;
-    box-shadow: 0 5px 0 #1e8449;
-    white-space: nowrap;
-  }
-  button:active { transform: translateY(3px); box-shadow: none; }
+        /* 資訊面板 */
+        #info-panel {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
 
-  /* 進度條容器 */
-  #progress-container {
-    position: absolute; 
-    top: 10vmin;  
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60%; max-width: 400px;
-    height: 30px;
-    background: rgba(0,0,0,0.6); 
-    border: 2px solid #fff;
-    border-radius: 15px;
-    overflow: hidden;
-    display: none; /* 遊戲開始才顯示 */
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-  }
+        .info-box {
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            padding: 8px 25px;
+            border-radius: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: inline-block;
+            border: 2px solid #333;
+            box-shadow: 0 4px 0 #ccc;
+            min-width: 140px; 
+        }
 
-  /* 進度條填充 */
-  #progress-bar {
-    height: 100%; width: 0%;
-    background: linear-gradient(90deg, #f1c40f, #e67e22);
-    transition: width 0.3s ease-out;
-  }
+        #target-word {
+            font-size: 5rem; font-weight: 900;
+            color: #FFEB3B;
+            text-shadow: 3px 3px 0px #000;
+            margin-top: 15px;
+            transition: color 0.3s;
+        }
 
-  /* 進度文字 */
-  #progress-text {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    text-align: center; line-height: 28px;
-    color: white; font-weight: bold; font-family: sans-serif;
-    text-shadow: 1px 1px 2px black; letter-spacing: 1px;
-  }
+        /* --- 頁尾區域 --- */
+        #footer-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 20;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+        }
 
-  /* 聽力提示 */
-  #listen-hint {
-    position: absolute; top: 25%; 
-    width: 100%;
-    text-align: center; font-size: 15vmin; 
-    color: #f1c40f; 
-    font-weight: 900; 
-    text-shadow: 4px 4px 0px #c0392b; 
-    display: none; opacity: 0; transition: opacity 0.3s;
-    pointer-events: none;
-  }
-  #listen-hint.show { display: block; opacity: 1; }
+        #footer-subtitle {
+            font-size: 2.2rem;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            font-weight: bold;
+            color: #FFD740; 
+            letter-spacing: 2px;
+        }
 
-  /* --- 頁腳設定 (品牌聯名版) --- */
-  #footer {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    text-align: center;
-    padding: 1vmin; /* 稍微減少 padding，為圖片留空間 */
-    background-color: rgba(0, 0, 0, 0.7);
-    z-index: 30; 
+        /* --- 手機版 RWD 調整 --- */
+        @media (max-width: 768px) {
+            #game-title { font-size: 1.5rem; margin-bottom: 5px; }
+            .info-box { font-size: 1rem; padding: 5px 15px; min-width: 100px; }
+            #target-word { font-size: 3rem; margin-top: 10px; }
+            #footer-subtitle { font-size: 1.2rem; }
+            #footer-bar { bottom: 10px; }
+            #top-bar { top: 10px; }
+        }
+
+        /* 啟動畫面 */
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #111;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 100;
+        }
+
+        button {
+            font-size: 2rem; padding: 15px 40px;
+            background: #FF9800; color: white;
+            border: none; border-radius: 10px;
+            cursor: pointer; 
+            border-bottom: 5px solid #E65100;
+        }
+        button:active { transform: translateY(3px); border-bottom: 2px solid #E65100; }
+        button:disabled { background: #555; border-bottom: 5px solid #333; cursor: wait; }
+
+        @media (max-width: 768px) {
+            button { font-size: 1.5rem; padding: 10px 30px; }
+        }
+
+        #feedback-text {
+            position: absolute; top: 40%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8rem; font-weight: bold;
+            text-shadow: 4px 4px 0 #000;
+            opacity: 0; transition: 0.2s; z-index: 30; 
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            #feedback-text { font-size: 4rem; }
+        }
+
+        .pop { opacity: 1 !important; transform: translate(-50%, -50%) scale(1.0) !important; }
+
+        /* 勝利畫面 */
+        #victory-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            background: rgba(0,0,0,0.85); /* 手機上背景深一點比較清楚 */
+            animation: fadeIn 1s;
+        }
+        
+        #victory-emoji {
+            font-size: 12rem;
+            animation: bounceIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-shadow: 0 0 50px rgba(255, 235, 59, 0.8);
+        }
+
+        #victory-text {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #FFF;
+            margin-top: 10px;
+            text-shadow: 4px 4px 0 #FF9800;
+            animation: slideUp 1s;
+            text-align: center;
+            padding: 0 20px;
+        }
+        
+        #victory-time {
+            font-size: 3rem;
+            color: #76FF03;
+            margin-top: 10px;
+            text-shadow: 2px 2px 0 #000;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            #victory-emoji { font-size: 8rem; }
+            #victory-text { font-size: 3rem; }
+            #victory-time { font-size: 2rem; }
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes bounceIn { 
+            0% { transform: scale(0); opacity: 0; } 
+            60% { transform: scale(1.2); opacity: 1; } 
+            100% { transform: scale(1); } 
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    </style>
     
-    color: white;
-    font-size: 5vmin; 
-    font-weight: 900; 
-    letter-spacing: 1px;
-    font-family: "Arial Black", "Microsoft JhengHei", sans-serif;
-  }
-
-  /* 頁腳文字容器 */
-  #footer-text {
-    margin-bottom: 0.5vmin;
-  }
-  
-  /* Ace English 樣式 (顏色改為深琥珀金 #FFB300) */
-  .ace-style {
-    color: #FFB300; 
-    text-shadow: 
-      2px 0 0 #fff, -2px 0 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 
-      1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
-    margin-right: 5px;
-  }
-
-  /* 翊華教育 樣式 (綠色+白框) */
-  .yihua-style {
-    color: #2ecc71; 
-    text-shadow: 
-      2px 0 0 #fff, -2px 0 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff, 
-      1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
-    margin-left: 5px;
-  }
-
-  /* 連結符號 x 的樣式 */
-  .x-style {
-    color: white;
-    font-weight: normal;
-    font-size: 0.8em; 
-  }
-  
-  /* --- 頁腳圖片設定 --- */
-  #footer-image {
-    width: 12vmin; /* 使用響應式單位，根據視窗大小調整圖片大小 */
-    height: auto;
-    display: block; /* 讓圖片獨占一行 */
-    margin: 0 auto; /* 圖片水平居中 */
-  }
-
-  .hidden { display: none !important; }
-
-  @media (min-width: 800px) {
-    h1 { font-size: 3rem; }
-    p { font-size: 1.2rem; }
-    button { font-size: 1.8rem; }
-    #listen-hint { font-size: 5rem; }
-    .victory-text { font-size: 2.5rem; }
-    #progress-container { top: 80px; }
-    #footer { font-size: 2rem; padding: 15px; }
-    #footer-image { width: 80px; } /* 電腦版圖片大小固定 */
-  }
-</style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
-  <div id="listen-hint">🔊 Listen!</div>
-
-  <div id="ui-layer">
-    
-    <div id="progress-container">
-      <div id="progress-bar"></div>
-      <div id="progress-text">0 / 20</div>
+    <div id="start-overlay">
+        <h2 style="color:white; text-align: center;">Magic Grab Game<br><span style="font-size:1rem; font-weight:normal;">PC: 手勢抓取 / Mobile: 觸控拖曳</span></h2>
+        <button id="start-btn" disabled>載入中...</button>
+        <p style="color:#aaa; font-size: 0.9rem; margin-top:10px;">請允許攝影機權限</p>
     </div>
 
-    <div id="start-panel" class="center-overlay">
-      <h1>🎄 Christmas Saber</h1>
-      <p>1. 聽英文單字<br>2. 答對 20 題即可通關<br>3. 滑動手指切開卡片！</p>
-      <button onclick="startGame()">Start 🎅</button>
+    <div id="victory-layer">
+        <div id="victory-emoji">👍</div>
+        <div id="victory-text">Good Job!</div>
+        <div id="victory-time">Time: 0.00s</div>
+        <button onclick="location.reload()" style="margin-top:30px; font-size: 1.5rem;">Play Again</button>
     </div>
 
-    <div id="victory-panel" class="center-overlay">
-      <h1>🎉 CONGRATULATIONS! 🎉</h1>
-      <div class="victory-text">Bravo!<br>You’re a Christmas Vocabulary Master.</div>
-      <button onclick="location.reload()">Play Again 🔄</button>
-    </div>
+    <div id="container">
+        <video id="input_video" playsinline></video>
+        <canvas id="output_canvas"></canvas>
+        
+        <div id="ui-layer">
+            <div id="top-bar">
+                <div id="game-title">Magic Grab Game</div>
+                
+                <div id="info-panel">
+                    <div class="info-box" id="progress-display">
+                        Progress: <span id="progress-cnt">0</span> / 10
+                    </div>
+                    <div class="info-box" id="time-display">
+                        Time: <span id="time-val">0.00</span>s
+                    </div>
+                </div>
 
-  </div>
+                <div id="target-word">Ready...</div>
+            </div>
+            <div id="feedback-text">Good!</div>
 
-  <div id="footer">
-    <div id="footer-text">
-      <span class="ace-style">Ace English</span>
-      <span class="x-style">x</span>
-      <span class="yihua-style">翊華教育</span>製作
+            <div id="footer-bar">
+                <div id="footer-subtitle">台灣兒童美語協會製作</div>
+            </div>
+        </div>
     </div>
-    <img id="footer-image" src="image_2.png" alt="Ace x 翊華聯名 Logo">
-  </div>
 
 <script>
-// --- 資料庫 ---
-const gameData = [
-    { word: "Santa", icon: "🎅", color: "#c0392b" },
-    { word: "Tree", icon: "🎄", color: "#27ae60" },
-    { word: "Gift", icon: "🎁", color: "#f1c40f" },
-    { word: "Snowman", icon: "⛄", color: "#3498db" },
-    { word: "Star", icon: "⭐", color: "#f1c40f" },
-    { word: "Bell", icon: "🔔", color: "#e67e22" },
-    { word: "Cookie", icon: "🍪", color: "#8d6e63" },
-    { word: "Candy", icon: "🍬", color: "#e91e63" },
-    { word: "Sock", icon: "🧦", color: "#c0392b" },
-    { word: "Angel", icon: "👼", color: "#f39c12" },
-    { word: "Reindeer", icon: "🦌", color: "#8d6e63" },
-    { word: "Sleigh", icon: "🛷", color: "#c0392b" },
-    { word: "Elf", icon: "🧝", color: "#27ae60" },
-    { word: "Snowflake", icon: "❄️", color: "#a2d9ff" },
-    { word: "Candle", icon: "🕯️", color: "#f39c12" },
-    { word: "Turkey", icon: "🦃", color: "#d35400" },
-    { word: "Ribbon", icon: "🎀", color: "#e91e63" },
-    { word: "Gloves", icon: "🧤", color: "#16a085" },
-    { word: "Scarf", icon: "🧣", color: "#e74c3c" },
-    { word: "Toy", icon: "🧸", color: "#9b59b6" }
-];
+    // --- 資料 ---
+    const vocabulary = [
+        { word: "Car", emoji: "🚗", color: "#F44336" }, 
+        { word: "Taxi", emoji: "🚕", color: "#FFC107" }, 
+        { word: "Bus", emoji: "🚌", color: "#2196F3" }, 
+        { word: "Police Car", emoji: "🚓", color: "#3F51B5" }, 
+        { word: "Ambulance", emoji: "🚑", color: "#E91E63" }, 
+        { word: "Bicycle", emoji: "🚲", color: "#4CAF50" }, 
+        { word: "Motorcycle", emoji: "🏍️", color: "#FF5722" }, 
+        { word: "Train", emoji: "🚆", color: "#9C27B0" }, 
+        { word: "Airplane", emoji: "✈️", color: "#03A9F4" }, 
+        { word: "Rocket", emoji: "🚀", color: "#673AB7" }, 
+        { word: "Ship", emoji: "🚢", color: "#00BCD4" }, 
+        { word: "Helicopter", emoji: "🚁", color: "#8BC34A" } 
+    ];
 
-const phrasesCorrect = ["Awesome!", "Perfect!", "Excellent!", "Great Job!", "Fantastic!", "You Rock!"];
-const phrasesWrong = ["Try Again!", "Don't Give Up!", "Keep Going!", "Nice Try!", "Almost There!", "You Can Do It!"];
+    const praises = ["Excellent!", "Awesome!", "Fantastic!", "Brilliant!", "Great Job!", "Perfect!", "Super!", "Wonderful!"];
+    const wrongs = ["Try Again", "Oops!", "Not that one", "Look carefully", "Oh no!", "Almost there!", "Don't give up!", "Not quite right"];
+    const victoryPraises = ["Mission Complete!", "You are a Master!", "Good Job!", "All Correct!", "Outstanding!", "You Did It!"];
 
-// --- 遊戲狀態 ---
-let isGameRunning = false;
-let correctCount = 0;
-const MAX_SCORE = 20; // 目標分數
+    // --- 變數 ---
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const videoElement = document.getElementById('input_video');
+    const victoryLayer = document.getElementById('victory-layer');
+    const victoryTextEl = document.getElementById('victory-text');
+    const timeValEl = document.getElementById('time-val');
+    
+    let gameState = {
+        isPlaying: false,
+        isGameOver: false,
+        isTimerStopped: false, 
+        correctCount: 0,
+        maxQuestions: 10,
+        startTime: 0, 
+        finalTimeStr: "0.00", 
+        target: null,
+        objects: [],
+        hand: { x: -1, y: -1, pinching: false }, 
+        grabbed: null, // 用於手勢或觸控
+        touchMode: false, // 是否正在使用觸控
+        confetti: [] 
+    };
 
-let cards = [];
-let particles = [];
-let saberTrail = [];
-let snowFlakes = []; 
-let synth = window.speechSynthesis;
-let currentTargetWord = "";
-const SPEECH_RATE = 0.85; 
+    // --- 觸控事件處理 (Mobile Support) ---
+    canvasElement.addEventListener('touchstart', handleTouchStart, {passive: false});
+    canvasElement.addEventListener('touchmove', handleTouchMove, {passive: false});
+    canvasElement.addEventListener('touchend', handleTouchEnd, {passive: false});
 
-// 響應式變數
-let R = {
-    cardSize: 0,
-    emojiSize: 0,
-    baseTextSize: 0,
-    borderW: 0,
-    feedbackSize: 0,
-    scoreSize: 0,
-    leftLaneX: 0,
-    rightLaneX: 0
-};
-
-let feedback = { text: "", life: 0, y: 0, scale: 1 };
-
-function setup() {
-  createCanvas(windowWidth, windowHeight);
-  textAlign(CENTER, CENTER);
-  rectMode(CENTER);
-  
-  calculateResponsiveSizes(); 
-
-  for(let i=0; i<60; i++) {
-    snowFlakes.push({
-      x: random(width), y: random(height),
-      size: random(2, 6), speed: random(0.5, 2.5)
-    });
-  }
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-  calculateResponsiveSizes();
-}
-
-function calculateResponsiveSizes() {
-    let minDim = min(width, height);
-    let isPortrait = width < height;
-
-    if (isPortrait) {
-        R.cardSize = constrain(width * 0.2, 60, 130);
-    } else {
-        R.cardSize = constrain(height * 0.18, 80, 150);
+    function getTouchPos(e) {
+        const rect = canvasElement.getBoundingClientRect();
+        const touch = e.touches[0];
+        // 轉換為 0-1 的正規化座標
+        // 注意：觸控不需要像 Webcam 那樣鏡像翻轉，是直接對應的
+        // 但是 Webcam 畫面是翻轉的，所以我們在繪製時翻轉了 Canvas 上下文？
+        // 我們的 draw() 函式中：
+        // Webcam: scale(-1, 1) -> 翻轉了
+        // Text/Objects: 正常繪製
+        // 所以觸控座標直接對應螢幕位置即可 (x: 0 is left, 1 is right)
+        return {
+            x: (touch.clientX - rect.left) / rect.width,
+            y: (touch.clientY - rect.top) / rect.height
+        };
     }
 
-    R.emojiSize = R.cardSize * 0.6;
-    R.baseTextSize = R.cardSize * 0.22;
-    
-    R.borderW = minDim * 0.03;
-    R.feedbackSize = minDim * 0.15;
-    R.scoreSize = minDim * 0.06;
+    function handleTouchStart(e) {
+        if (!gameState.isPlaying || gameState.isGameOver) return;
+        e.preventDefault(); // 防止滾動
+        gameState.touchMode = true;
+        const pos = getTouchPos(e);
+        
+        // 檢查是否點擊到物件
+        let closest = null;
+        let minDist = 0.1; 
+        gameState.objects.forEach(obj => {
+            const dx = obj.x - pos.x;
+            const dy = obj.y - pos.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < minDist) {
+                minDist = dist;
+                closest = obj;
+            }
+        });
+        
+        if (closest) {
+            gameState.grabbed = closest;
+        }
+    }
 
-    R.leftLaneX = width * 0.25;
-    R.rightLaneX = width * 0.75;
-}
+    function handleTouchMove(e) {
+        if (!gameState.isPlaying || gameState.isGameOver || !gameState.grabbed) return;
+        e.preventDefault();
+        const pos = getTouchPos(e);
+        // 更新物件位置
+        gameState.grabbed.x = pos.x;
+        gameState.grabbed.y = pos.y;
+    }
 
-function startGame() {
-  document.getElementById('start-panel').classList.add('hidden');
-  document.getElementById('progress-container').style.display = 'block'; 
-  
-  if(synth) synth.speak(new SpeechSynthesisUtterance("")); 
-  
-  isGameRunning = true;
-  correctCount = 0;
-  updateProgressUI();
-  
-  setTimeout(startRound, 800);
-}
+    function handleTouchEnd(e) {
+        if (!gameState.isPlaying || gameState.isGameOver) return;
+        e.preventDefault();
+        // 放開時檢查
+        if (gameState.grabbed) {
+            checkDrop(gameState.grabbed);
+            gameState.grabbed = null;
+        }
+        gameState.touchMode = false;
+    }
 
-function updateProgressUI() {
-    let pct = (correctCount / MAX_SCORE) * 100;
-    document.getElementById('progress-bar').style.width = pct + "%";
-    document.getElementById('progress-text').innerText = correctCount + " / " + MAX_SCORE;
-}
 
-function startRound() {
-  if(!isGameRunning) return;
+    // --- 核心功能 ---
 
-  let targetData = random(gameData);
-  currentTargetWord = targetData.word;
-  
-  let distractorData;
-  do { distractorData = random(gameData); } while(distractorData.word === targetData.word);
+    function resizeCanvas() {
+        canvasElement.width = window.innerWidth;
+        canvasElement.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); 
 
-  let hint = document.getElementById('listen-hint');
-  hint.classList.add('show');
-  hint.innerText = "🔊 Listen...";
+    function speak(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); 
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-US'; 
+            u.rate = 1.0;
+            u.pitch = 1.1; 
+            window.speechSynthesis.speak(u);
+        }
+    }
 
-  speak(targetData.word, null, SPEECH_RATE);
+    function spawnObject(forcedTarget = null) {
+        const type = forcedTarget || vocabulary[Math.floor(Math.random() * vocabulary.length)];
+        gameState.objects.push({
+            word: type.word,
+            emoji: type.emoji,
+            color: type.color,
+            x: Math.random() * 0.8 + 0.1,
+            y: Math.random() * 0.4 + 0.05, 
+            vx: (Math.random() - 0.5) * 0.002, 
+            vy: (Math.random() - 0.5) * 0.002,
+            size: 0.08
+        });
+    }
 
-  setTimeout(() => {
-    hint.classList.remove('show');
-    spawnCards(targetData, distractorData);
-  }, 1000); 
-}
+    function nextLevel() {
+        if (gameState.isGameOver) return;
 
-function spawnCards(target, distractor) {
-  let items = [target, distractor];
-  if (random() > 0.5) items.reverse();
+        document.getElementById('progress-cnt').innerText = gameState.correctCount;
 
-  // 垂直發射，分左右跑道
-  launchCard(R.leftLaneX, height + 50, R.leftLaneX, height * 0.2, items[0], items[0].word === currentTargetWord);
-  launchCard(R.rightLaneX, height + 50, R.rightLaneX, height * 0.2, items[1], items[1].word === currentTargetWord);
-}
+        if (gameState.correctCount >= gameState.maxQuestions) {
+            triggerVictory();
+            return;
+        }
 
-function launchCard(startX, startY, destX, destY, data, isTarget) {
-    let gravity = 0.06; 
-    let heightDiff = startY - destY;
-    let vy = -Math.sqrt(2 * gravity * heightDiff); 
-    let timeToPeak = Math.abs(vy / gravity);
-    let vx = (destX - startX) * 0.01; 
+        gameState.target = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+        document.getElementById('target-word').innerText = gameState.target.word;
+        document.getElementById('target-word').style.color = "#FFEB3B"; 
+        speak(gameState.target.word);
 
-    cards.push({
-        x: startX, y: startY,
-        vx: vx, vy: vy,
-        gravity: gravity,
-        size: R.cardSize, 
-        angle: 0, 
-        rotSpeed: random(-0.005, 0.005), 
-        data: data, isTarget: isTarget,
-        draw: function() {
-            push();
-            translate(this.x, this.y); rotate(this.angle);
-            fill(255); 
-            stroke(isTarget ? "#c0392b" : "#2c3e50"); 
-            strokeWeight(3);
-            rect(0, 0, this.size, this.size * 1.3, 15);
-            textSize(R.emojiSize); noStroke(); text(this.data.icon, 0, -this.size*0.15);
+        if (!gameState.objects.find(o => o.word === gameState.target.word)) {
+            spawnObject(gameState.target);
+        }
+    }
+
+    function triggerVictory() {
+        gameState.isGameOver = true;
+        gameState.isPlaying = false; 
+        
+        document.getElementById('progress-cnt').innerText = gameState.maxQuestions;
+        timeValEl.innerText = gameState.finalTimeStr; 
+        document.getElementById('victory-time').innerText = `Time: ${gameState.finalTimeStr}s`; 
+        
+        const finalText = victoryPraises[Math.floor(Math.random() * victoryPraises.length)];
+        victoryTextEl.innerText = finalText;
+        
+        victoryLayer.style.display = 'flex';
+        speak(finalText);
+
+        for(let i=0; i<100; i++) {
+            gameState.confetti.push({
+                x: Math.random() * canvasElement.width,
+                y: Math.random() * canvasElement.height - canvasElement.height,
+                color: `hsl(${Math.random()*360}, 100%, 50%)`,
+                size: Math.random() * 10 + 5,
+                speed: Math.random() * 5 + 2
+            });
+        }
+        
+        requestAnimationFrame(victoryLoop);
+    }
+
+    function victoryLoop() {
+        if (!gameState.isGameOver) return;
+        
+        canvasCtx.fillStyle = "#000";
+        canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+        
+        gameState.confetti.forEach(c => {
+            c.y += c.speed;
+            if (c.y > canvasElement.height) c.y = -20;
+            canvasCtx.fillStyle = c.color;
+            canvasCtx.fillRect(c.x, c.y, c.size, c.size);
+        });
+
+        requestAnimationFrame(victoryLoop);
+    }
+
+    function showFeedback(isCorrect) {
+        const el = document.getElementById('feedback-text');
+        
+        let text = "";
+        let color = "";
+        
+        if (isCorrect) {
+            text = praises[Math.floor(Math.random() * praises.length)];
+            color = "#76FF03"; 
+        } else {
+            text = wrongs[Math.floor(Math.random() * wrongs.length)];
+            color = "#FF1744"; 
+        }
+
+        el.innerText = text;
+        el.style.color = color;
+        el.classList.add('pop');
+        speak(text); 
+        setTimeout(() => el.classList.remove('pop'), 1200);
+    }
+
+    function gameLoop() {
+        if (gameState.isPlaying && !gameState.isGameOver && !gameState.isTimerStopped) {
+            const now = Date.now();
+            const elapsed = (now - gameState.startTime) / 1000;
+            timeValEl.innerText = elapsed.toFixed(2);
             
-            // 字體大小動態調整
-            let finalFontSize = R.baseTextSize;
-            let wordLen = this.data.word.length;
-            if (wordLen > 6) finalFontSize = R.baseTextSize * 0.85;
-            if (wordLen > 8) finalFontSize = R.baseTextSize * 0.7;
+            updatePhysics();
+            draw();
+        }
+        
+        if (!gameState.isGameOver) {
+            requestAnimationFrame(gameLoop);
+        }
+    }
 
-            fill(0); textSize(finalFontSize); textStyle(BOLD); text(this.data.word, 0, this.size*0.4);
-            pop();
-        },
-        update: function() {
-            this.x += this.vx;
-            this.y += this.vy;
-            this.vy += this.gravity;
-            this.angle += this.rotSpeed;
+    // --- 統一的判定邏輯 (Webcam or Touch) ---
+    function checkDrop(obj) {
+        const distToTableCenter = Math.sqrt(
+            Math.pow(obj.x - 0.5, 2) + 
+            Math.pow(obj.y - 0.9, 2)
+        );
+
+        if (distToTableCenter < 0.15) { 
+            if (obj.word === gameState.target.word) {
+                // Correct
+                gameState.correctCount++; 
+                document.getElementById('progress-cnt').innerText = gameState.correctCount;
+                document.getElementById('target-word').style.color = "#76FF03";
+                showFeedback(true); 
+                
+                gameState.objects = gameState.objects.filter(o => o !== obj);
+                
+                if (gameState.correctCount >= gameState.maxQuestions) {
+                    gameState.isTimerStopped = true; 
+                    const now = Date.now();
+                    const elapsed = (now - gameState.startTime) / 1000;
+                    gameState.finalTimeStr = elapsed.toFixed(2);
+                    timeValEl.innerText = gameState.finalTimeStr; 
+                    setTimeout(triggerVictory, 1500); 
+                } else {
+                    setTimeout(nextLevel, 1500);
+                }
+            } else {
+                // Wrong
+                showFeedback(false); 
+                obj.y -= 0.3; // 彈開
+            }
+        }
+    }
+
+    function updatePhysics() {
+        // 更新漂浮
+        gameState.objects.forEach(obj => {
+            if (obj !== gameState.grabbed) {
+                obj.x += obj.vx;
+                obj.y += obj.vy;
+                if(obj.x < 0.05 || obj.x > 0.95) obj.vx *= -1;
+                if(obj.y < 0.05 || obj.y > 0.65) obj.vy *= -1; 
+            }
+        });
+
+        // 僅處理手勢邏輯 (觸控邏輯由 event listener 處理)
+        if (!gameState.touchMode && gameState.hand.pinching) {
+            if (!gameState.grabbed) {
+                let closest = null;
+                let minDist = 0.1; 
+                gameState.objects.forEach(obj => {
+                    const dx = obj.x - gameState.hand.x;
+                    const dy = obj.y - gameState.hand.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = obj;
+                    }
+                });
+                if (closest) gameState.grabbed = closest;
+            } else {
+                // 手勢拖曳中
+                gameState.grabbed.x += (gameState.hand.x - gameState.grabbed.x) * 0.2;
+                gameState.grabbed.y += (gameState.hand.y - gameState.grabbed.y) * 0.2;
+
+                checkDrop(gameState.grabbed);
+            }
+        } else if (!gameState.touchMode) {
+            gameState.grabbed = null;
+        }
+    }
+
+    function draw() {
+        const w = canvasElement.width;
+        const h = canvasElement.height;
+
+        if (videoElement.readyState >= 2) {
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1); 
+            canvasCtx.drawImage(videoElement, -w, 0, w, h); 
+            canvasCtx.restore();
+        } else {
+            canvasCtx.fillStyle = "#111";
+            canvasCtx.fillRect(0, 0, w, h);
+        }
+
+        canvasCtx.fillStyle = "rgba(30, 30, 30, 0.85)"; 
+        canvasCtx.fillRect(0, 0, w, h);
+
+        const tableW = w * 0.35; 
+        const tableBottomW = w * 0.55; 
+        const tableH = h * 0.18; 
+        const tableY = h - tableH;
+
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(w/2 - tableW/2, tableY + 10); 
+        canvasCtx.lineTo(w/2 + tableW/2, tableY + 10); 
+        canvasCtx.lineTo(w/2 + tableBottomW/2, h);    
+        canvasCtx.lineTo(w/2 - tableBottomW/2, h);    
+        canvasCtx.closePath();
+        
+        canvasCtx.fillStyle = "#8D6E63"; 
+        canvasCtx.fill();
+        canvasCtx.strokeStyle = "#5D4037";
+        canvasCtx.lineWidth = 5;
+        canvasCtx.stroke();
+
+        // RWD 字體調整
+        const fontSize = w < 600 ? 18 : 24;
+        canvasCtx.fillStyle = "#FFF";
+        canvasCtx.font = `bold ${fontSize}px Arial`; 
+        canvasCtx.textAlign = "center";
+        canvasCtx.fillText("Place the correct vocabulary", w/2, tableY + tableH/2);
+
+        // 連接線 (僅選手勢模式)
+        if (!gameState.touchMode && gameState.grabbed && gameState.hand.pinching) {
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(gameState.hand.x * w, gameState.hand.y * h);
+            canvasCtx.lineTo(gameState.grabbed.x * w, gameState.grabbed.y * h);
+            canvasCtx.strokeStyle = "#FFF"; 
+            canvasCtx.lineWidth = 4;
+            canvasCtx.stroke();
+        }
+
+        gameState.objects.forEach(obj => {
+            const x = obj.x * w;
+            const y = obj.y * h;
+            const r = (obj.size * w) / 2;
+
+            canvasCtx.fillStyle = obj.color;
+            canvasCtx.beginPath();
+            canvasCtx.arc(x, y, r, 0, 2*Math.PI);
+            canvasCtx.fill();
+            canvasCtx.lineWidth = 3;
+            canvasCtx.strokeStyle = "white";
+            canvasCtx.stroke();
+
+            canvasCtx.font = `${r * 1.2}px Arial`;
+            canvasCtx.textAlign = "center";
+            canvasCtx.textBaseline = "middle";
+            canvasCtx.fillStyle = "white";
+            canvasCtx.fillText(obj.emoji, x, y);
+
+            if (obj === gameState.grabbed) {
+                canvasCtx.fillStyle = "#FFF";
+                // RWD 字體
+                const bigFont = w < 600 ? 30 : 45;
+                canvasCtx.font = `bold ${bigFont}px Arial`; 
+                canvasCtx.lineWidth = 4; 
+                canvasCtx.strokeStyle = "black";
+                canvasCtx.strokeText(obj.word, x, y - r - 20);
+                canvasCtx.fillText(obj.word, x, y - r - 20);
+            }
+        });
+
+        // 手勢游標 (僅非觸控模式顯示)
+        if (!gameState.touchMode) {
+            const hx = gameState.hand.x * w;
+            const hy = gameState.hand.y * h;
+            if (hx > 0 && hx < w) { 
+                canvasCtx.beginPath();
+                canvasCtx.arc(hx, hy, 12, 0, 2*Math.PI);
+                canvasCtx.fillStyle = gameState.hand.pinching ? "#FF5252" : "#448AFF"; 
+                canvasCtx.fill();
+                canvasCtx.strokeStyle = "white";
+                canvasCtx.lineWidth = 2;
+                canvasCtx.stroke();
+                
+                canvasCtx.beginPath();
+                canvasCtx.arc(hx, hy, 30, 0, 2*Math.PI); 
+                canvasCtx.strokeStyle = "rgba(255,255,255,0.5)";
+                canvasCtx.lineWidth = 2;
+                canvasCtx.stroke();
+            }
+        }
+    }
+
+    const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+    hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    hands.onResults(results => {
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            const lm = results.multiHandLandmarks[0];
+            const iTip = lm[8];
+            const tTip = lm[4];
+            const dist = Math.sqrt(Math.pow(iTip.x - tTip.x, 2) + Math.pow(iTip.y - tTip.y, 2));
+            
+            const rawX = (iTip.x + tTip.x) / 2;
+            gameState.hand.x = 1 - rawX; 
+            gameState.hand.y = (iTip.y + tTip.y) / 2;
+            gameState.hand.pinching = dist < 0.08;
+        } else {
+            gameState.hand.pinching = false;
         }
     });
-}
 
-function draw() {
-  setGradient(0, 0, width, height, color(11, 30, 16), color(5, 10, 5));
-  drawSnow();
-  drawChristmasBorder();
+    const camera = new Camera(videoElement, {
+        onFrame: async () => { await hands.send({image: videoElement}); },
+        width: 1280, height: 720
+    });
 
-  drawParticles(); 
+    const startBtn = document.getElementById('start-btn');
+    camera.start().then(() => {
+        startBtn.innerText = "點擊開始遊戲";
+        startBtn.disabled = false;
+        startBtn.onclick = () => {
+            document.getElementById('start-overlay').style.display = 'none';
+            gameState.isPlaying = true;
+            gameState.startTime = Date.now(); 
+            for(let i=0; i<8; i++) spawnObject();
+            nextLevel();
+            gameLoop();
+        };
+    });
 
-  if(!isGameRunning) return;
-
-  // 光劍狀態
-  let isSaberActive = false;
-  if (touches.length > 0) {
-      isSaberActive = true;
-      updateSaber(touches[0].x, touches[0].y);
-  } else {
-      updateSaber(mouseX, mouseY);
-      isSaberActive = true; 
-  }
-  
-  if (touches.length === 0 && 'ontouchstart' in window) {
-      isSaberActive = false;
-      saberTrail = []; 
-  }
-
-  // 速度偵測
-  let saberSpeed = dist(mouseX, mouseY, pmouseX, pmouseY);
-  let isSlashing = saberSpeed > 5; 
-
-  drawSaberOptimized();
-
-  for (let i = cards.length - 1; i >= 0; i--) {
-    let c = cards[i];
-    if (!c) continue; 
-    c.update();
-    c.draw();
-
-    if (isSaberActive && isSlashing && dist(mouseX, mouseY, c.x, c.y) < c.size/2 + 20) {
-        handleHit(c, i);
-        break; 
-    } 
-    else if (c.y > height + 200) {
-      cards.splice(i, 1);
-      if(cards.length === 0) setTimeout(startRound, 1000);
-    }
-  }
-
-  drawFeedback();
-}
-
-// --- 勝利處理函式 ---
-function triggerVictory() {
-    isGameRunning = false;
-    cards = []; 
-    document.getElementById('progress-container').style.display = 'none';
-    
-    const panel = document.getElementById('victory-panel');
-    panel.style.display = 'flex';
-    
-    speak("Bravo! You’re a Christmas Vocabulary Master.", null, 0.9);
-    
-    setInterval(() => {
-        createExplosion(random(width), random(height), random(['#ff0000', '#00ff00', '#ffd700']));
-    }, 300);
-}
-
-function handleHit(card, index) {
-  cards.splice(index, 1);
-  createExplosion(card.x, card.y, card.data.color);
-
-  if (card.isTarget) {
-    correctCount++; 
-    updateProgressUI(); 
-    
-    if (correctCount >= MAX_SCORE) {
-        triggerVictory();
-        return; 
-    }
-
-    triggerFeedback(true);
-    speak(feedback.text, null, SPEECH_RATE);
-    cards = []; setTimeout(startRound, 1200);
-  } else {
-    triggerFeedback(false);
-    speak(feedback.text, null, SPEECH_RATE);
-    cards = []; setTimeout(startRound, 1200);
-  }
-}
-
-// --- 以下為特效與工具函式 ---
-
-function createExplosion(x, y, colorHex) {
-  for (let i = 0; i < 30; i++) {
-    particles.push(new Particle(x, y, colorHex, 'debris'));
-  }
-  for (let i = 0; i < 20; i++) {
-    particles.push(new Particle(x, y, '#ffd700', 'sparkle'));
-  }
-}
-
-class Particle {
-    constructor(x, y, col, type) {
-        this.x = x; this.y = y; this.col = col; this.type = type;
-        let angle = random(TWO_PI);
-        let speed = random(min(width,height)*0.01, min(width,height)*0.03); 
-        this.vx = cos(angle) * speed;
-        this.vy = sin(angle) * speed;
-        this.life = 255;
-        this.gravity = 0.4;
-        this.friction = 0.94;
-        let baseScale = min(width, height) / 800;
-        this.size = (type === 'debris' ? random(8, 16) : random(3, 8)) * baseScale;
-        this.rot = random(TWO_PI); this.rotSpeed = random(-0.3, 0.3);
-    }
-    update() {
-        this.x += this.vx; this.y += this.vy; this.vy += this.gravity;
-        this.vx *= this.friction; this.vy *= this.friction;
-        this.life -= this.type === 'debris' ? 5 : 8;
-        this.rot += this.rotSpeed; this.size *= 0.96;
-    }
-    draw() {
-        push(); translate(this.x, this.y); rotate(this.rot); noStroke();
-        let c = color(this.col); c.setAlpha(this.life); fill(c);
-        if (this.type === 'debris') rect(0, 0, this.size, this.size);
-        else { blendMode(ADD); circle(0, 0, this.size); blendMode(BLEND); }
-        pop();
-    }
-}
-
-function drawParticles() {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    let p = particles[i];
-    p.update(); p.draw();
-    if (p.life <= 0) particles.splice(i, 1);
-  }
-}
-
-function triggerFeedback(isCorrect) {
-    feedback.text = isCorrect ? random(phrasesCorrect) : random(phrasesWrong);
-    feedback.life = 255; feedback.y = height / 2; feedback.scale = 0.5;
-}
-
-function drawFeedback() {
-    if (feedback.life > 0) {
-        push();
-        translate(width / 2, feedback.y);
-        scale(feedback.scale);
-        let goldColor = color(255, 215, 0, feedback.life);
-        drawingContext.shadowBlur = 40; drawingContext.shadowColor = 'rgba(255, 215, 0, 0.8)';
-        fill(goldColor); stroke(255, feedback.life); strokeWeight(3);
-        textSize(R.feedbackSize); 
-        textStyle(BOLD); text(feedback.text, 0, 0);
-        feedback.life -= 4; feedback.y -= 1.5;
-        if(feedback.scale < 1.2) feedback.scale += 0.05;
-        drawingContext.shadowBlur = 0;
-        pop();
-    }
-}
-
-function drawChristmasBorder() {
-  push(); rectMode(CORNER); noStroke();
-  let borderW = R.borderW; 
-  let stripeLen = borderW * 1.5; 
-  let redC = color('#c0392b'); let greenC = color('#27ae60');
-
-  for(let x = 0; x < width; x += stripeLen) {
-    fill((x / stripeLen) % 2 === 0 ? redC : greenC); rect(x, 0, stripeLen, borderW);
-    fill((x / stripeLen) % 2 !== 0 ? redC : greenC); rect(x, height - borderW, stripeLen, borderW);
-  }
-  for(let y = borderW; y < height - borderW; y += stripeLen) {
-    fill((y / stripeLen) % 2 === 0 ? redC : greenC); rect(0, y, borderW, stripeLen);
-    fill((y / stripeLen) % 2 !== 0 ? redC : greenC); rect(width - borderW, y, borderW, stripeLen);
-  }
-  
-  fill(redC); rect(0,0,borderW,borderW);
-  fill(greenC); rect(width-borderW,0,borderW,borderW);
-  fill(greenC); rect(0,height-borderW,borderW,borderW);
-  fill(redC); rect(width-borderW,height-borderW,borderW,borderW);
-  pop();
-}
-
-function updateSaber(x, y) {
-  saberTrail.push({x: x, y: y, life: 8});
-  for (let i = saberTrail.length - 1; i >= 0; i--) {
-    saberTrail[i].life--;
-    if (saberTrail[i].life <= 0) saberTrail.splice(i, 1);
-  }
-}
-
-function drawSaberOptimized() {
-  if (saberTrail.length < 2) return;
-  blendMode(ADD); 
-  noFill(); strokeCap(ROUND); strokeJoin(ROUND);
-  stroke(255, 0, 0, 100); strokeWeight(25);
-  beginShape(); for (let p of saberTrail) vertex(p.x, p.y); endShape();
-  stroke(255, 50, 50, 200); strokeWeight(15);
-  beginShape(); for (let p of saberTrail) vertex(p.x, p.y); endShape();
-  stroke(255, 255, 255, 255); strokeWeight(5);
-  beginShape(); for (let p of saberTrail) vertex(p.x, p.y); endShape();
-  blendMode(BLEND); 
-}
-
-function drawSnow() {
-  fill(255, 100); noStroke();
-  for(let s of snowFlakes) {
-    circle(s.x, s.y, s.size);
-    s.y += s.speed;
-    if(s.y > height) s.y = -10;
-  }
-}
-
-function setGradient(x, y, w, h, c1, c2) {
-  noFill();
-  for (let i = y; i <= y + h; i+=10) { 
-    let inter = map(i, y, y + h, 0, 1);
-    let c = lerpColor(c1, c2, inter);
-    stroke(c); strokeWeight(10);
-    line(x, i, x + w, i);
-  }
-}
-
-function speak(text, callback, rate = 1.0) {
-  synth.cancel();
-  let u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US'; u.rate = rate; 
-  if(callback) u.onend = callback;
-  synth.speak(u);
-}
 </script>
 </body>
 </html>
