@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Magic Grab Game - 台灣兒童美語協會</title>
+    <style>
+        body {
+            margin: 0; padding: 0;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            color: white;
+            user-select: none;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw; height: 100vh;
+            display: flex;
+            justify-content: center; align-items: center;
+        }
+
+        #input_video { display: none; }
+
+        canvas {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 10;
+        }
+
+        /* --- 頂部區域 --- */
+        #top-bar {
+            position: absolute; top: 20px; left: 0; width: 100%;
+            text-align: center;
+        }
+
+        #game-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #FFD740; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        /* 資訊面板 */
+        #info-panel {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            padding: 8px 25px;
+            border-radius: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: inline-block;
+            border: 2px solid #333;
+            box-shadow: 0 4px 0 #ccc;
+            min-width: 160px; 
+        }
+
+        #target-word {
+            font-size: 5rem; font-weight: 900;
+            color: #FFEB3B;
+            text-shadow: 3px 3px 0px #000;
+            margin-top: 15px;
+            transition: color 0.3s;
+        }
+
+        /* --- 頁尾區域 --- */
+        #footer-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 20;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+        }
+
+        #footer-subtitle {
+            font-size: 2.2rem;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            font-weight: bold;
+            color: #FFD740; 
+            letter-spacing: 2px;
+        }
+
+        /* 啟動畫面 */
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #111;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 100;
+        }
+
+        button {
+            font-size: 2rem; padding: 15px 40px;
+            background: #FF9800; color: white;
+            border: none; border-radius: 10px;
+            cursor: pointer; 
+            border-bottom: 5px solid #E65100;
+        }
+        button:active { transform: translateY(3px); border-bottom: 2px solid #E65100; }
+        button:disabled { background: #555; border-bottom: 5px solid #333; cursor: wait; }
+
+        #feedback-text {
+            position: absolute; top: 40%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8rem; font-weight: bold;
+            text-shadow: 4px 4px 0 #000;
+            opacity: 0; transition: 0.2s; z-index: 30; 
+        }
+        .pop { opacity: 1 !important; transform: translate(-50%, -50%) scale(1.0) !important; }
+
+        /* 勝利畫面 */
+        #victory-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            background: rgba(0,0,0,0.7);
+            animation: fadeIn 1s;
+        }
+        
+        #victory-emoji {
+            font-size: 12rem;
+            animation: bounceIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-shadow: 0 0 50px rgba(255, 235, 59, 0.8);
+        }
+
+        #victory-text {
+            font-size: 5rem;
+            font-weight: 900;
+            color: #FFF;
+            margin-top: 10px;
+            text-shadow: 4px 4px 0 #FF9800;
+            animation: slideUp 1s;
+            text-align: center;
+        }
+        
+        #victory-time {
+            font-size: 3rem;
+            color: #76FF03;
+            margin-top: 10px;
+            text-shadow: 2px 2px 0 #000;
+            font-weight: bold;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes bounceIn { 
+            0% { transform: scale(0); opacity: 0; } 
+            60% { transform: scale(1.2); opacity: 1; } 
+            100% { transform: scale(1); } 
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div id="start-overlay">
+        <h2 style="color:white;">Magic Grab Game</h2>
+        <button id="start-btn" disabled>載入中...</button>
+        <p style="color:#aaa;">請允許攝影機權限</p>
+    </div>
+
+    <div id="victory-layer">
+        <div id="victory-emoji">👍</div>
+        <div id="victory-text">Good Job!</div>
+        <div id="victory-time">Time: 0.00s</div>
+        <button onclick="location.reload()" style="margin-top:30px; font-size: 1.5rem;">Play Again</button>
+    </div>
+
+    <div id="container">
+        <video id="input_video"></video>
+        <canvas id="output_canvas"></canvas>
+        
+        <div id="ui-layer">
+            <div id="top-bar">
+                <div id="game-title">Magic Grab Game</div>
+                
+                <div id="info-panel">
+                    <div class="info-box" id="progress-display">
+                        Progress: <span id="progress-cnt">0</span> / 10
+                    </div>
+                    <div class="info-box" id="time-display">
+                        Time: <span id="time-val">0.00</span>s
+                    </div>
+                </div>
+
+                <div id="target-word">Ready...</div>
+            </div>
+            <div id="feedback-text">Good!</div>
+
+            <div id="footer-bar">
+                <div id="footer-subtitle">台灣兒童美語協會製作</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- 資料 ---
+    const vocabulary = [
+        { word: "Car", emoji: "🚗", color: "#F44336" }, 
+        { word: "Taxi", emoji: "🚕", color: "#FFC107" }, 
+        { word: "Bus", emoji: "🚌", color: "#2196F3" }, 
+        { word: "Police Car", emoji: "🚓", color: "#3F51B5" }, 
+        { word: "Ambulance", emoji: "🚑", color: "#E91E63" }, 
+        { word: "Bicycle", emoji: "🚲", color: "#4CAF50" }, 
+        { word: "Motorcycle", emoji: "🏍️", color: "#FF5722" }, 
+        { word: "Train", emoji: "🚆", color: "#9C27B0" }, 
+        { word: "Airplane", emoji: "✈️", color: "#03A9F4" }, 
+        { word: "Rocket", emoji: "🚀", color: "#673AB7" }, 
+        { word: "Ship", emoji: "🚢", color: "#00BCD4" }, 
+        { word: "Helicopter", emoji: "🚁", color: "#8BC34A" } 
+    ];
+
+    const praises = ["Excellent!", "Awesome!", "Fantastic!", "Brilliant!", "Great Job!", "Perfect!", "Super!", "Wonderful!"];
+    const wrongs = ["Try Again", "Oops!", "Not that one", "Look carefully", "Oh no!", "Almost there!", "Don't give up!", "Not quite right"];
+    const victoryPraises = ["Mission Complete!", "You are a Master!", "Good Job!", "All Correct!", "Outstanding!", "You Did It!"];
+
+    // --- 變數 ---
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const videoElement = document.getElementById('input_video');
+    const victoryLayer = document.getElementById('victory-layer');
+    const victoryTextEl = document.getElementById('victory-text');
+    const timeValEl = document.getElementById('time-val');
+    
+    let gameState = {
+        isPlaying: false,
+        isGameOver: false,
+        isTimerStopped: false, // 新增：控制計時器是否停止
+        correctCount: 0,
+        maxQuestions: 10,
+        startTime: 0, 
+        finalTimeStr: "0.00", 
+        target: null,
+        objects: [],
+        hand: { x: -1, y: -1, pinching: false }, 
+        grabbed: null,
+        confetti: [] 
+    };
+
+    // --- 核心功能 ---
+
+    function resizeCanvas() {
+        canvasElement.width = window.innerWidth;
+        canvasElement.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); 
+
+    function speak(text) {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel(); 
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-US'; 
+            u.rate = 1.0;
+            u.pitch = 1.1; 
+            window.speechSynthesis.speak(u);
+        }
+    }
+
+    function spawnObject(forcedTarget = null) {
+        const type = forcedTarget || vocabulary[Math.floor(Math.random() * vocabulary.length)];
+        gameState.objects.push({
+            word: type.word,
+            emoji: type.emoji,
+            color: type.color,
+            x: Math.random() * 0.8 + 0.1,
+            y: Math.random() * 0.4 + 0.05, 
+            vx: (Math.random() - 0.5) * 0.002, 
+            vy: (Math.random() - 0.5) * 0.002,
+            size: 0.08
+        });
+    }
+
+    function nextLevel() {
+        if (gameState.isGameOver) return;
+
+        document.getElementById('progress-cnt').innerText = gameState.correctCount;
+
+        if (gameState.correctCount >= gameState.maxQuestions) {
+            triggerVictory(); // 雙重保險
+            return;
+        }
+
+        gameState.target = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+        document.getElementById('target-word').innerText = gameState.target.word;
+        document.getElementById('target-word').style.color = "#FFEB3B"; 
+        speak(gameState.target.word);
+
+        if (!gameState.objects.find(o => o.word === gameState.target.word)) {
+            spawnObject(gameState.target);
+        }
+    }
+
+    function triggerVictory() {
+        gameState.isGameOver = true;
+        gameState.isPlaying = false; 
+        
+        // 此時時間已經在 updatePhysics 裡被鎖定，直接使用
+        
+        // 更新 UI
+        document.getElementById('progress-cnt').innerText = gameState.maxQuestions;
+        timeValEl.innerText = gameState.finalTimeStr; 
+        document.getElementById('victory-time').innerText = `Time: ${gameState.finalTimeStr}s`; 
+        
+        const finalText = victoryPraises[Math.floor(Math.random() * victoryPraises.length)];
+        victoryTextEl.innerText = finalText;
+        
+        victoryLayer.style.display = 'flex';
+        speak(finalText);
+
+        for(let i=0; i<100; i++) {
+            gameState.confetti.push({
+                x: Math.random() * canvasElement.width,
+                y: Math.random() * canvasElement.height - canvasElement.height,
+                color: `hsl(${Math.random()*360}, 100%, 50%)`,
+                size: Math.random() * 10 + 5,
+                speed: Math.random() * 5 + 2
+            });
+        }
+        
+        requestAnimationFrame(victoryLoop);
+    }
+
+    function victoryLoop() {
+        if (!gameState.isGameOver) return;
+        
+        canvasCtx.fillStyle = "#000";
+        canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+        
+        gameState.confetti.forEach(c => {
+            c.y += c.speed;
+            if (c.y > canvasElement.height) c.y = -20;
+            canvasCtx.fillStyle = c.color;
+            canvasCtx.fillRect(c.x, c.y, c.size, c.size);
+        });
+
+        requestAnimationFrame(victoryLoop);
+    }
+
+    function showFeedback(isCorrect) {
+        const el = document.getElementById('feedback-text');
+        
+        let text = "";
+        let color = "";
+        
+        if (isCorrect) {
+            text = praises[Math.floor(Math.random() * praises.length)];
+            color = "#76FF03"; 
+        } else {
+            text = wrongs[Math.floor(Math.random() * wrongs.length)];
+            color = "#FF1744"; 
+        }
+
+        el.innerText = text;
+        el.style.color = color;
+        el.classList.add('pop');
+        speak(text); 
+        setTimeout(() => el.classList.remove('pop'), 1200);
+    }
+
+    function gameLoop() {
+        // 更新時間 (只有在遊戲進行中且計時器未停止時)
+        if (gameState.isPlaying && !gameState.isGameOver && !gameState.isTimerStopped) {
+            const now = Date.now();
+            const elapsed = (now - gameState.startTime) / 1000;
+            timeValEl.innerText = elapsed.toFixed(2);
+            
+            updatePhysics();
+            draw();
+        }
+        
+        if (!gameState.isGameOver) {
+            requestAnimationFrame(gameLoop);
+        }
+    }
+
+    function updatePhysics() {
+        gameState.objects.forEach(obj => {
+            if (obj !== gameState.grabbed) {
+                obj.x += obj.vx;
+                obj.y += obj.vy;
+                if(obj.x < 0.05 || obj.x > 0.95) obj.vx *= -1;
+                if(obj.y < 0.05 || obj.y > 0.65) obj.vy *= -1; 
+            }
+        });
+
+        if (gameState.hand.pinching) {
+            if (!gameState.grabbed) {
+                let closest = null;
+                let minDist = 0.1; 
+                gameState.objects.forEach(obj => {
+                    const dx = obj.x - gameState.hand.x;
+                    const dy = obj.y - gameState.hand.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = obj;
+                    }
+                });
+                if (closest) gameState.grabbed = closest;
+            } else {
+                gameState.grabbed.x += (gameState.hand.x - gameState.grabbed.x) * 0.2;
+                gameState.grabbed.y += (gameState.hand.y - gameState.grabbed.y) * 0.2;
+
+                const distToTableCenter = Math.sqrt(
+                    Math.pow(gameState.grabbed.x - 0.5, 2) + 
+                    Math.pow(gameState.grabbed.y - 0.9, 2)
+                );
+
+                if (distToTableCenter < 0.12) { 
+                    if (gameState.grabbed.word === gameState.target.word) {
+                        // --- 答對 ---
+                        gameState.correctCount++; 
+                        
+                        document.getElementById('progress-cnt').innerText = gameState.correctCount;
+                        document.getElementById('target-word').style.color = "#76FF03";
+                        
+                        showFeedback(true); 
+                        
+                        gameState.objects = gameState.objects.filter(o => o !== gameState.grabbed);
+                        gameState.grabbed = null;
+                        
+                        // 檢查是否通關
+                        if (gameState.correctCount >= gameState.maxQuestions) {
+                            // --- 關鍵修正：立即鎖定時間 ---
+                            gameState.isTimerStopped = true; 
+                            const now = Date.now();
+                            const elapsed = (now - gameState.startTime) / 1000;
+                            gameState.finalTimeStr = elapsed.toFixed(2);
+                            timeValEl.innerText = gameState.finalTimeStr; // 強制更新最後一次 UI
+
+                            setTimeout(triggerVictory, 1500); // 延遲顯示勝利畫面，但時間已鎖定
+                        } else {
+                            setTimeout(nextLevel, 1500);
+                        }
+
+                    } else {
+                        // --- 答錯 ---
+                        showFeedback(false); 
+                        gameState.grabbed.y -= 0.3;
+                        gameState.grabbed = null;
+                    }
+                }
+            }
+        } else {
+            gameState.grabbed = null;
+        }
+    }
+
+    function draw() {
+        const w = canvasElement.width;
+        const h = canvasElement.height;
+
+        if (videoElement.readyState >= 2) {
+            canvasCtx.save();
+            canvasCtx.scale(-1, 1); 
+            canvasCtx.drawImage(videoElement, -w, 0, w, h); 
+            canvasCtx.restore();
+        } else {
+            canvasCtx.fillStyle = "#111";
+            canvasCtx.fillRect(0, 0, w, h);
+        }
+
+        canvasCtx.fillStyle = "rgba(30, 30, 30, 0.85)"; 
+        canvasCtx.fillRect(0, 0, w, h);
+
+        const tableW = w * 0.35; 
+        const tableBottomW = w * 0.55; 
+        const tableH = h * 0.18; 
+        const tableY = h - tableH;
+
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(w/2 - tableW/2, tableY + 10); 
+        canvasCtx.lineTo(w/2 + tableW/2, tableY + 10); 
+        canvasCtx.lineTo(w/2 + tableBottomW/2, h);    
+        canvasCtx.lineTo(w/2 - tableBottomW/2, h);    
+        canvasCtx.closePath();
+        
+        canvasCtx.fillStyle = "#8D6E63"; 
+        canvasCtx.fill();
+        canvasCtx.strokeStyle = "#5D4037";
+        canvasCtx.lineWidth = 5;
+        canvasCtx.stroke();
+
+        canvasCtx.fillStyle = "#FFF";
+        canvasCtx.font = "bold 24px Arial"; 
+        canvasCtx.textAlign = "center";
+        canvasCtx.fillText("Place the correct vocabulary", w/2, tableY + tableH/2);
+
+        if (gameState.grabbed && gameState.hand.pinching) {
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(gameState.hand.x * w, gameState.hand.y * h);
+            canvasCtx.lineTo(gameState.grabbed.x * w, gameState.grabbed.y * h);
+            canvasCtx.strokeStyle = "#FFF"; 
+            canvasCtx.lineWidth = 4;
+            canvasCtx.stroke();
+        }
+
+        gameState.objects.forEach(obj => {
+            const x = obj.x * w;
+            const y = obj.y * h;
+            const r = (obj.size * w) / 2;
+
+            canvasCtx.fillStyle = obj.color;
+            canvasCtx.beginPath();
+            canvasCtx.arc(x, y, r, 0, 2*Math.PI);
+            canvasCtx.fill();
+            canvasCtx.lineWidth = 3;
+            canvasCtx.strokeStyle = "white";
+            canvasCtx.stroke();
+
+            canvasCtx.font = `${r * 1.2}px Arial`;
+            canvasCtx.textAlign = "center";
+            canvasCtx.textBaseline = "middle";
+            canvasCtx.fillStyle = "white";
+            canvasCtx.fillText(obj.emoji, x, y);
+
+            if (obj === gameState.grabbed) {
+                canvasCtx.fillStyle = "#FFF";
+                canvasCtx.font = "bold 45px Arial"; 
+                canvasCtx.lineWidth = 4; 
+                canvasCtx.strokeStyle = "black";
+                canvasCtx.strokeText(obj.word, x, y - r - 20);
+                canvasCtx.fillText(obj.word, x, y - r - 20);
+            }
+        });
+
+        const hx = gameState.hand.x * w;
+        const hy = gameState.hand.y * h;
+        if (hx > 0 && hx < w) { 
+            canvasCtx.beginPath();
+            canvasCtx.arc(hx, hy, 12, 0, 2*Math.PI);
+            canvasCtx.fillStyle = gameState.hand.pinching ? "#FF5252" : "#448AFF"; 
+            canvasCtx.fill();
+            canvasCtx.strokeStyle = "white";
+            canvasCtx.lineWidth = 2;
+            canvasCtx.stroke();
+            
+            canvasCtx.beginPath();
+            canvasCtx.arc(hx, hy, 30, 0, 2*Math.PI); 
+            canvasCtx.strokeStyle = "rgba(255,255,255,0.5)";
+            canvasCtx.lineWidth = 2;
+            canvasCtx.stroke();
+        }
+    }
+
+    const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+    hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    hands.onResults(results => {
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            const lm = results.multiHandLandmarks[0];
+            const iTip = lm[8];
+            const tTip = lm[4];
+            const dist = Math.sqrt(Math.pow(iTip.x - tTip.x, 2) + Math.pow(iTip.y - tTip.y, 2));
+            
+            const rawX = (iTip.x + tTip.x) / 2;
+            gameState.hand.x = 1 - rawX; 
+            gameState.hand.y = (iTip.y + tTip.y) / 2;
+            gameState.hand.pinching = dist < 0.08;
+        } else {
+            gameState.hand.pinching = false;
+        }
+    });
+
+    const camera = new Camera(videoElement, {
+        onFrame: async () => { await hands.send({image: videoElement}); },
+        width: 1280, height: 720
+    });
+
+    const startBtn = document.getElementById('start-btn');
+    camera.start().then(() => {
+        startBtn.innerText = "點擊開始遊戲";
+        startBtn.disabled = false;
+        startBtn.onclick = () => {
+            document.getElementById('start-overlay').style.display = 'none';
+            gameState.isPlaying = true;
+            gameState.startTime = Date.now(); 
+            for(let i=0; i<8; i++) spawnObject();
+            nextLevel();
+            gameLoop();
+        };
+    });
+
+</script>
+</body>
+</html>
