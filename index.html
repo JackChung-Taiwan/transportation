@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Grab Game - PC Visual Adjustments</title>
+    <title>Magic Grab Game - Size Adjustments</title>
     <style>
         /* --- 樣式設定 --- */
         body {
@@ -67,7 +67,6 @@
             #game-title { font-size: 1.8rem; margin-top: 10px; }
             .info-box { font-size: 1.2rem; padding: 5px 15px; min-width: 100px; }
             #target-word { font-size: 4rem !important; }
-            /* 手機版 Logo 維持較小尺寸 */
             #footer-logo { max-height: 60px !important; }
         }
 
@@ -101,8 +100,7 @@
         #footer-logo {
             height: auto;
             width: auto;
-            /* --- 修改重點：電腦版 Logo 放大 --- */
-            max-height: 120px; /* 從 80px 改為 120px */
+            max-height: 120px; /* 電腦版維持大 Logo */
             max-width: 80%; 
             display: inline-block;
         }
@@ -293,15 +291,19 @@
     function spawnObject(forcedTarget = null) {
         const type = forcedTarget || vocabulary[Math.floor(Math.random() * vocabulary.length)];
         
-        // 電腦版大尺寸 (0.20), 手機版維持 (0.15)
-        let baseSize = isMobile ? 0.15 : 0.20; 
+        // --- 修改重點 1: 手機版圖片變大 ---
+        // 手機版: 0.18 (原為 0.15, 變大)
+        // 電腦版: 0.20 (維持不變)
+        let baseSize = isMobile ? 0.18 : 0.20; 
+
+        let randomY = Math.random() * 0.55 + 0.20;
 
         gameState.objects.push({
             word: type.word,
             emoji: type.emoji,
             color: type.color,
             x: Math.random() * 0.8 + 0.1,
-            y: Math.random() * 0.4 + 0.05, 
+            y: randomY, 
             vx: (Math.random() - 0.5) * 0.002, 
             vy: (Math.random() - 0.5) * 0.002,
             size: baseSize
@@ -388,8 +390,10 @@
         gameState.objects.forEach(obj => {
             if (obj !== gameState.grabbed) {
                 obj.x += obj.vx; obj.y += obj.vy;
+                
                 if(obj.x < 0.05 || obj.x > 0.95) obj.vx *= -1;
-                if(obj.y < 0.05 || obj.y > 0.65) obj.vy *= -1; 
+                // 限制 Y 軸移動範圍
+                if(obj.y < 0.20 || obj.y > 0.75) obj.vy *= -1; 
             }
         });
 
@@ -461,7 +465,9 @@
             canvasCtx.clearRect(0,0,w,h); 
         }
 
-        const tableH = h * 0.15; 
+        // --- 修改重點 2: 桌子變小 ---
+        // 高度比例改為 0.11 (原為 0.15)
+        const tableH = h * 0.11; 
         const tableY = h - tableH;
 
         canvasCtx.beginPath();
@@ -500,9 +506,7 @@
             canvasCtx.strokeStyle = "white";
             canvasCtx.stroke();
 
-            // --- 修改重點：調整圓圈內文字大小 ---
-            // 手機版維持較大比例 (1.2倍半徑)
-            // 電腦版縮小比例 (改為 0.8倍半徑)，讓圖案圓圈感覺更空曠
+            // 電腦版文字縮小 (0.8), 手機版維持 (1.2)
             let fontSizeMultiplier = isMobile ? 1.2 : 0.8;
             canvasCtx.font = `${r * fontSizeMultiplier}px Arial`;
             
