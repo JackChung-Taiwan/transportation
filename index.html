@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Grab Game - Smart Spawning</title>
+    <title>Magic Grab Game - Golden Feedback</title>
     <style>
         /* --- 樣式設定 --- */
         body {
@@ -303,13 +303,11 @@
         if (forcedTarget) {
             type = forcedTarget;
         } else {
-            // 1. 計算場上現有單字數量
+            // 1. 計算場上數量
             let counts = {};
             gameState.objects.forEach(o => { counts[o.word] = (counts[o.word] || 0) + 1; });
 
-            // 2. 篩選候選字：
-            //    (A) 場上數量少於 2 (避免重複太多)
-            //    (B) 且「不是」目前的目標單字 (避免補進來的圖片剛好是這題答案)
+            // 2. 篩選: 數量<2 且 不是當前目標
             let candidates = vocabulary.filter(v => {
                 let countOk = (counts[v.word] || 0) < 2;
                 let isNotTarget = true;
@@ -319,7 +317,7 @@
                 return countOk && isNotTarget;
             });
 
-            // 3. 極端狀況防呆
+            // 3. 防呆
             if (candidates.length === 0) candidates = vocabulary;
 
             type = candidates[Math.floor(Math.random() * candidates.length)];
@@ -337,7 +335,7 @@
             vx: (Math.random() - 0.5) * 0.002, 
             vy: (Math.random() - 0.5) * 0.002,
             size: baseSize,
-            createdAt: Date.now() // --- 修改重點：加入生成時間標記 ---
+            createdAt: Date.now() 
         });
     }
 
@@ -346,34 +344,24 @@
         document.getElementById('progress-cnt').innerText = gameState.correctCount;
         if (gameState.correctCount >= gameState.maxQuestions) return;
 
-        // --- 修改重點：智慧選擇目標 ---
-        // 1. 優先從場上現有的物件中選擇
-        // 2. 但要排除掉「最新生成」的那個物件 (避免剛補進來就是答案)
-        
-        // 依照生成時間排序 (舊 -> 新)
+        // 智慧出題：排除最新生成的一個
         let sortedObjects = [...gameState.objects].sort((a, b) => a.createdAt - b.createdAt);
-        
         let targetCandidate = null;
 
-        // 如果場上有超過 1 個物件，我們排除掉最新的一個
         if (sortedObjects.length > 1) {
-            // 從「除了最新一個以外」的舊物件中隨機選一個
             let validCandidates = sortedObjects.slice(0, sortedObjects.length - 1);
             targetCandidate = validCandidates[Math.floor(Math.random() * validCandidates.length)];
         } else if (sortedObjects.length === 1) {
             targetCandidate = sortedObjects[0];
         }
 
-        // 如果場上沒東西(理論上不會發生)，才從字典選
         if (targetCandidate) {
-            // 從 vocabulary 找到對應的完整資料
             gameState.target = vocabulary.find(v => v.word === targetCandidate.word);
         } else {
             gameState.target = vocabulary[Math.floor(Math.random() * vocabulary.length)];
-            spawnObject(gameState.target); // 沒東西抓，只好強制生一個
+            spawnObject(gameState.target); 
         }
         
-        // UI 更新
         const targetEl = document.getElementById('target-word');
         targetEl.innerText = "🔊"; 
         targetEl.style.color = "#FFEB3B"; 
@@ -420,7 +408,9 @@
     function showFeedback(isCorrect) {
         const el = document.getElementById('feedback-text');
         let text = isCorrect ? praises[Math.floor(Math.random() * praises.length)] : wrongs[Math.floor(Math.random() * wrongs.length)];
-        let color = isCorrect ? "#76FF03" : "#FF1744"; 
+        // --- 修改重點：答對為金黃色 ---
+        let color = isCorrect ? "#FFD700" : "#FF1744"; 
+        
         el.innerText = text; el.style.color = color;
         el.classList.add('pop'); speak(text); 
         setTimeout(() => el.classList.remove('pop'), 1200);
@@ -434,7 +424,7 @@
                 timeValEl.innerText = elapsed.toFixed(2);
             }
             
-            // 自動補充機制: 保持最少 10 個
+            // 保持最少 10 個
             if (gameState.objects.length < 10) {
                 spawnObject();
             }
