@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Grab Game - No Easy Spawn</title>
+    <title>Magic Grab Game - Smart Spawning</title>
     <style>
         /* --- 樣式設定 --- */
         body {
@@ -303,15 +303,13 @@
         if (forcedTarget) {
             type = forcedTarget;
         } else {
-            // --- 修改重點：防止生成當前目標單字作為補充 ---
-            
-            // 1. 計算目前場上每個單字的數量
+            // 1. 計算場上現有單字數量
             let counts = {};
             gameState.objects.forEach(o => { counts[o.word] = (counts[o.word] || 0) + 1; });
 
             // 2. 篩選候選字：
-            //    (A) 場上數量少於 2
-            //    (B) 且「不是」目前的目標單字 (避免一補進來就是答案)
+            //    (A) 場上數量少於 2 (避免重複太多)
+            //    (B) 且「不是」目前的目標單字 (避免補進來的圖片剛好是這題答案)
             let candidates = vocabulary.filter(v => {
                 let countOk = (counts[v.word] || 0) < 2;
                 let isNotTarget = true;
@@ -321,17 +319,14 @@
                 return countOk && isNotTarget;
             });
 
-            // 3. 如果篩選後沒有候選字 (極端情況)，則放寬條件只看數量
-            if (candidates.length === 0) {
-                candidates = vocabulary.filter(v => (counts[v.word] || 0) < 2);
-            }
-            if (candidates.length === 0) candidates = vocabulary; // 最終防呆
+            // 3. 極端狀況防呆
+            if (candidates.length === 0) candidates = vocabulary;
 
             type = candidates[Math.floor(Math.random() * candidates.length)];
         }
 
         let baseSize = isMobile ? 0.18 : 0.20; 
-        let randomY = Math.random() * 0.45 + 0.25; // 安全區
+        let randomY = Math.random() * 0.45 + 0.25; 
 
         gameState.objects.push({
             word: type.word,
@@ -341,7 +336,8 @@
             y: randomY, 
             vx: (Math.random() - 0.5) * 0.002, 
             vy: (Math.random() - 0.5) * 0.002,
-            size: baseSize
+            size: baseSize,
+            createdAt: Date.now() // --- 修改重點：加入生成時間標記 ---
         });
     }
 
@@ -350,18 +346,39 @@
         document.getElementById('progress-cnt').innerText = gameState.correctCount;
         if (gameState.correctCount >= gameState.maxQuestions) return;
 
-        gameState.target = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+        // --- 修改重點：智慧選擇目標 ---
+        // 1. 優先從場上現有的物件中選擇
+        // 2. 但要排除掉「最新生成」的那個物件 (避免剛補進來就是答案)
         
+        // 依照生成時間排序 (舊 -> 新)
+        let sortedObjects = [...gameState.objects].sort((a, b) => a.createdAt - b.createdAt);
+        
+        let targetCandidate = null;
+
+        // 如果場上有超過 1 個物件，我們排除掉最新的一個
+        if (sortedObjects.length > 1) {
+            // 從「除了最新一個以外」的舊物件中隨機選一個
+            let validCandidates = sortedObjects.slice(0, sortedObjects.length - 1);
+            targetCandidate = validCandidates[Math.floor(Math.random() * validCandidates.length)];
+        } else if (sortedObjects.length === 1) {
+            targetCandidate = sortedObjects[0];
+        }
+
+        // 如果場上沒東西(理論上不會發生)，才從字典選
+        if (targetCandidate) {
+            // 從 vocabulary 找到對應的完整資料
+            gameState.target = vocabulary.find(v => v.word === targetCandidate.word);
+        } else {
+            gameState.target = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+            spawnObject(gameState.target); // 沒東西抓，只好強制生一個
+        }
+        
+        // UI 更新
         const targetEl = document.getElementById('target-word');
         targetEl.innerText = "🔊"; 
         targetEl.style.color = "#FFEB3B"; 
         
         speak(gameState.target.word);
-
-        // 如果目前場上沒有這個目標單字，強制生成一個
-        if (!gameState.objects.find(o => o.word === gameState.target.word)) {
-            spawnObject(gameState.target);
-        }
     }
 
     function triggerVictory() {
@@ -417,7 +434,7 @@
                 timeValEl.innerText = elapsed.toFixed(2);
             }
             
-            // 自動補充機制
+            // 自動補充機制: 保持最少 10 個
             if (gameState.objects.length < 10) {
                 spawnObject();
             }
@@ -434,7 +451,6 @@
                 obj.x += obj.vx; obj.y += obj.vy;
                 
                 if(obj.x < 0.05 || obj.x > 0.95) obj.vx *= -1;
-                // 強制邊界檢查
                 if(obj.y < 0.25) { obj.y = 0.25; obj.vy = Math.abs(obj.vy); }
                 if(obj.y > 0.72) { obj.y = 0.72; obj.vy = -Math.abs(obj.vy); }
             }
