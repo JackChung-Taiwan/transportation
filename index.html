@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Grab Game - Mobile Welcome</title>
+    <title>Magic Grab Game - Advanced Logic</title>
     <style>
         /* --- 樣式設定 --- */
         body {
@@ -63,6 +63,14 @@
             min-width: 140px; 
         }
 
+        @media (max-width: 768px) {
+            #game-title { font-size: 1.8rem; margin-top: 10px; }
+            .info-box { font-size: 1.2rem; padding: 5px 15px; min-width: 100px; }
+            #target-word { font-size: 4rem !important; }
+            #footer-logo { max-height: 60px !important; }
+            #feedback-text { font-size: 3rem !important; }
+        }
+
         .time-stopped {
             background: #FFEB3B !important;
             color: #D50000 !important;
@@ -71,6 +79,7 @@
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
+        /* 題目區顯示喇叭 */
         #target-word {
             font-size: 5rem; font-weight: 900; color: #FFEB3B;
             text-shadow: 3px 3px 0px #000; margin-top: 15px; 
@@ -95,31 +104,16 @@
             display: inline-block;
         }
 
-        /* --- 啟動畫面 (主要修改區) --- */
+        /* --- 啟動畫面 --- */
         #start-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #111; 
-            display: flex; 
-            flex-direction: column;
-            justify-content: center; 
-            align-items: center; 
-            z-index: 100;
+            background: #111; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
             padding: 20px; text-align: center;
         }
 
-        /* 啟動畫面標題 */
-        #start-title {
-            color: white; 
-            margin-bottom: 20px;
-            font-size: 2.5rem; /* PC 預設 */
-        }
-
-        /* 啟動畫面 Logo */
-        #start-logo {
-            margin-top: 30px;
-            max-height: 80px; /* PC 預設 */
-            width: auto;
-        }
+        #start-title { color: white; margin-bottom: 20px; font-size: 2.5rem; }
+        #start-logo { margin-top: 30px; max-height: 80px; width: auto; }
 
         #device-hint {
             color: #4fc3f7; font-size: 1.5rem; margin-bottom: 30px; 
@@ -167,32 +161,10 @@
 
         /* --- 📱 手機版專用調整 --- */
         @media (max-width: 768px) {
-            /* 遊戲中 */
-            #game-title { font-size: 1.8rem; margin-top: 10px; }
-            .info-box { font-size: 1.2rem; padding: 5px 15px; min-width: 100px; }
-            #target-word { font-size: 4rem !important; }
-            #footer-logo { max-height: 60px !important; }
-            #feedback-text { font-size: 3rem !important; }
-
-            /* 啟動畫面 (首頁) 放大 */
-            #start-title { 
-                font-size: 3.5rem !important; /* 標題變大 */
-                margin-bottom: 30px;
-            }
-            #device-hint {
-                font-size: 1.8rem; /* 提示字變大 */
-                padding: 15px 30px;
-                margin-bottom: 40px;
-            }
-            #start-btn {
-                font-size: 2.5rem; /* 按鈕變大 */
-                padding: 20px 60px;
-                width: 80%; /* 寬度加寬 */
-            }
-            #start-logo {
-                max-height: 180px !important; /* Logo 大幅變大 */
-                margin-top: 40px;
-            }
+            #start-title { font-size: 3.5rem !important; margin-bottom: 30px; }
+            #device-hint { font-size: 1.8rem; padding: 15px 30px; margin-bottom: 40px; }
+            #start-btn { font-size: 2.5rem; padding: 20px 60px; width: 80%; }
+            #start-logo { max-height: 180px !important; margin-top: 40px; }
         }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -215,7 +187,6 @@
         <h2 id="start-title">Magic Grab Game</h2>
         <div id="device-hint">偵測裝置中...</div>
         <button id="start-btn" disabled>Loading...</button>
-        
         <img id="start-logo" src="image_0.png" alt="台灣兒童美語協會 Logo">
     </div>
 
@@ -328,11 +299,27 @@
     }
 
     function spawnObject(forcedTarget = null) {
-        const type = forcedTarget || vocabulary[Math.floor(Math.random() * vocabulary.length)];
-        let baseSize = isMobile ? 0.18 : 0.20; 
+        // --- 修改重點：智慧生成邏輯 ---
+        
+        let type;
+        if (forcedTarget) {
+            type = forcedTarget;
+        } else {
+            // 1. 計算目前場上每個單字的數量
+            let counts = {};
+            gameState.objects.forEach(o => { counts[o.word] = (counts[o.word] || 0) + 1; });
 
-        // 安全區
-        let randomY = Math.random() * 0.45 + 0.25;
+            // 2. 篩選出數量小於 2 的單字 (避免重複超過一次)
+            let candidates = vocabulary.filter(v => (counts[v.word] || 0) < 2);
+            
+            // 3. 如果沒有候選字(理論上不可能，因為 15個單字 * 2 > 10格)，就從全部隨機選
+            if (candidates.length === 0) candidates = vocabulary;
+            
+            type = candidates[Math.floor(Math.random() * candidates.length)];
+        }
+
+        let baseSize = isMobile ? 0.18 : 0.20; 
+        let randomY = Math.random() * 0.45 + 0.25; // 安全區
 
         gameState.objects.push({
             word: type.word,
@@ -359,6 +346,7 @@
         
         speak(gameState.target.word);
 
+        // 如果目前場上沒有這個目標單字，強制生成一個
         if (!gameState.objects.find(o => o.word === gameState.target.word)) {
             spawnObject(gameState.target);
         }
@@ -416,6 +404,13 @@
                 const elapsed = (now - gameState.startTime) / 1000;
                 timeValEl.innerText = elapsed.toFixed(2);
             }
+            
+            // --- 修改重點：自動補充圖片 ---
+            // 確保畫面上至少有 10 個物件
+            if (gameState.objects.length < 10) {
+                spawnObject();
+            }
+
             updatePhysics();
             draw();
         }
@@ -428,7 +423,6 @@
                 obj.x += obj.vx; obj.y += obj.vy;
                 
                 if(obj.x < 0.05 || obj.x > 0.95) obj.vx *= -1;
-
                 if(obj.y < 0.25) { obj.y = 0.25; obj.vy = Math.abs(obj.vy); }
                 if(obj.y > 0.72) { obj.y = 0.72; obj.vy = -Math.abs(obj.vy); }
             }
@@ -580,7 +574,7 @@
         canvasElement.addEventListener('touchmove', (e) => { e.preventDefault(); const t = e.touches[0]; gameState.hand.x = t.clientX/window.innerWidth; gameState.hand.y = t.clientY/window.innerHeight; gameState.hand.pinching = true; }, {passive:false});
         canvasElement.addEventListener('touchend', (e) => { e.preventDefault(); gameState.hand.pinching = false; gameState.hand.x = -1; });
         startBtn.innerText = "點擊開始遊戲"; startBtn.disabled = false;
-        startBtn.onclick = () => { document.getElementById('start-overlay').style.display = 'none'; gameState.isPlaying = true; gameState.startTime = Date.now(); for(let i=0; i<6; i++) spawnObject(); nextLevel(); gameLoop(); };
+        startBtn.onclick = () => { document.getElementById('start-overlay').style.display = 'none'; gameState.isPlaying = true; gameState.startTime = Date.now(); for(let i=0; i<8; i++) spawnObject(); nextLevel(); gameLoop(); };
     } else {
         const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
         hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
